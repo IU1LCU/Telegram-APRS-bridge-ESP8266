@@ -50,6 +50,7 @@ void aprs(float latitudine, float longitudine) {
     client.println(packet);
     Serial.println(packet);
   }
+  delay(300000); //just a stupid 5 minutes delay so you dont send too much packet to aprs server, and if you use live position, it beacon only 1 every 5 minute
 }
 
 //CONVERSIONE
