@@ -14,6 +14,8 @@ const char* comment = "Comment";
 ////// Server Data APRS-IS ///////
 const uint16_t port = 14580;            //APRS-IS Default port
 const char* host = "france.aprs2.net";  //APRS-IS Server
+int period = 300000;                    //time for gps 300000 = 5min, 120000 = 2min
+unsigned long time_now = 0;             //all inizio il tempo e 0
 // Wifi network station credentials
 #define WIFI_SSID "WIFINAME"
 #define WIFI_PASSWORD "WIFIPASS"
@@ -30,9 +32,7 @@ const unsigned long BOT_MTBS = 1000;  // mean time between scan messages
 unsigned long bot_lasttime;  // last time messages' scan has been done
 X509List cert(TELEGRAM_CERTIFICATE_ROOT);
 WiFiClientSecure secured_client;
-UniversalTelegramBot bot(BOT_TOKEN, secured_client);
-
-void aprs(float latitudine, float longitudine) {
+UniversalTelegramBot bot(BOT_TOKEN, secured_client);void aprs(float latitudine, float longitudine, String chat_id) {
   if ((WiFiMulti.run() == WL_CONNECTED)) {
     HTTPClient http;
     WiFiClient client;  // Wifi client mode
@@ -49,8 +49,8 @@ void aprs(float latitudine, float longitudine) {
     String packet = String(callsign) + "-" + String(aprsid) + ">APRSWX,TCPIP*,qAC,WIDE1-1:=" + String(convertDecimalToNMEA(latitudine)) + "/" + String(convertLongitudeToNMEA(longitudine)) + String(icon);  //Basic aprs
     client.println(packet);
     Serial.println(packet);
+    bot.sendMessage(chat_id, "Sending APRS", "");
   }
-  //delay(300000); the delay doesnt work for live sharing, cause it dont refresh the new position!!!! dont use it
 }
 
 //CONVERSIONE
@@ -62,8 +62,8 @@ String convertDecimalToNMEA(float decimalLatitude) {
   return nmeaLatitude;
 }
 String convertLongitudeToNMEA(float decimalLongitude) {
-  int degrees = int(decimalLongitude);                                                                    // Ottieni i gradi come parte intera
-  float minutesDecimal = (decimalLongitude - degrees) * 60;                                               // Calcola i minuti decimali
+  int degrees = int(decimalLongitude);                                                                     // Ottieni i gradi come parte intera
+  float minutesDecimal = (decimalLongitude - degrees) * 60;                                                // Calcola i minuti decimali
   String nmeaLongitude = (degrees < 100 ? "00" : "") + String(degrees) + String(minutesDecimal, 2) + "E";  // Formatta come stringa con tre cifre per i gradi (aggiunge zeri iniziali)
 
   return nmeaLongitude;
@@ -100,13 +100,16 @@ void handleNewMessages(int numNewMessages) {
       message += "Long NMEA: " + convertLongitudeToNMEA(longitudine) + "\n";
       message += "Lat NMEA: " + convertDecimalToNMEA(latitudine) + "\n";
       bot.sendMessage(chat_id, message, "Markdown");
-      bot.sendMessage(chat_id, "Sending APRS", "");
 
-      aprs(latitudine, longitudine);
+      if (millis() >= time_now + period) {
+        time_now += period;
+        aprs(latitudine, longitudine, chat_id);
+      }
+
     } else if (text == "/start") {
       String welcome = "Welcome to Telegram-APRS Bridge " + from_name + ".\n";
-      welcome += "Share a location or a live location to send your position to APRS.fi\n";
-      welcome += "Pay attention that live location refresh every 30 second, it mean that you send aprs packet every 30 second!!\n";
+      welcome += "Share a location (5min after bootup) or a live location to send your position to APRS.fi\n";
+      welcome += "the live position will be sent once every 5 miunte\n";
 
       bot.sendMessage(chat_id, welcome, "Markdown");
     }
@@ -150,6 +153,10 @@ void loop() {
       handleNewMessages(numNewMessages);
       numNewMessages = bot.getUpdates(bot.last_message_received + 1);
     }
+
+    bot_lasttime = millis();
+  }
+}
 
     bot_lasttime = millis();
   }
