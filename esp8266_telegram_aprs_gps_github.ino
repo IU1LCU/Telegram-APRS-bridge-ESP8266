@@ -108,8 +108,9 @@ void handleNewMessages(int numNewMessages) {
 
     } else if (text == "/start") {
       String welcome = "Welcome to Telegram-APRS Bridge " + from_name + ".\n";
-      welcome += "Share a location (5min after bootup) or a live location to send your position to APRS.fi\n";
-      welcome += "the live position will be sent once every 5 miunte\n";
+      welcome += "Share a location (int period after bootup) or a live location to send your position to APRS.fi\n";
+      welcome += "the live position will be sent once every int period time\n";
+       welcome += "Made by Andrea IU1LCU october 2024\n";
 
       bot.sendMessage(chat_id, welcome, "Markdown");
     }
